@@ -1,0 +1,47 @@
+name: DevSecOps Pipeline
+on: [push]
+
+jobs:
+  security-scans:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: TruffleHog (Secret Scanning)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Bandit (SAST Code Scan)
+        run: |
+          pip install bandit
+          bandit -r . -ll || exit 1
+
+      - name: Safety (Dependency Scan)
+        run: |
+          pip install safety
+          safety check -r requirements.txt || exit 1
+
+      - name: Checkov (IaC Scan)
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          framework: dockerfile
+
+      - name: Build Docker Image
+        run: docker build -t my-vulnerable-app:latest .
+
+      - name: Trivy (Container Scan)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'my-vulnerable-app:latest'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
