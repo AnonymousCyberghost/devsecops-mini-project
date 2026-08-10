@@ -35,6 +35,7 @@ jobs:
         with:
           directory: .
           framework: dockerfile
+          hard_fail_on: HIGH
           
       - name: Build Docker Image
         run: docker build -t my-vulnerable-app:latest .
